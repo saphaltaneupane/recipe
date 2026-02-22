@@ -85,6 +85,7 @@ router.put("/edit/recipe/:id", auth, async (req, res) => {
         .json({ success: false, message: "Recipe not found" });
     }
 
+    // Check ownership
     if (recipe.createdBy.toString() !== req.user.id) {
       return res
         .status(403)
@@ -94,7 +95,7 @@ router.put("/edit/recipe/:id", auth, async (req, res) => {
     const updatedRecipe = await Recipe.findByIdAndUpdate(
       req.params.id,
       updates,
-      { returnDocument: "after" } // ✅ Mongoose 7+ fix
+      { returnDocument: "after" }
     );
 
     return res.status(200).json({
