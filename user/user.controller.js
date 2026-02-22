@@ -8,9 +8,13 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
 const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS ?? "12", 10);
-const JWT_EXPIRY = process.env.JWT_EXPIRY ?? "7d";
+
+// ✅ Increase token expiry (e.g., 30 days)
+const JWT_EXPIRY = process.env.JWT_EXPIRY ?? "30d";
+
+// Cookie expiry matches token expiry
 const COOKIE_EXPIRY_MS = parseInt(
-  process.env.COOKIE_EXPIRY_MS ?? `${7 * 24 * 60 * 60 * 1000}`
+  process.env.COOKIE_EXPIRY_MS ?? `${30 * 24 * 60 * 60 * 1000}` // 30 days in ms
 );
 
 router.post("/register", async (req, res) => {

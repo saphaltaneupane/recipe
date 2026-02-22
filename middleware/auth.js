@@ -1,20 +1,39 @@
 import jwt from "jsonwebtoken";
 
 const auth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer "))
-    return res.status(401).json({ success: false, message: "Not authorized" });
-
-  const token = authHeader.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // attach id, username, email
+    const authHeader = req.headers.authorization;
+
+    // Check for Authorization header
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authorization header missing or malformed. Use 'Bearer <token>'",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Token missing" });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "default_secret"
+    );
+    req.user = decoded; // attach user info to request
     next();
   } catch (err) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid or expired token" });
+    console.error("JWT verification error:", err.message);
+
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ success: false, message: "Token expired" });
+    }
+
+    return res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
 

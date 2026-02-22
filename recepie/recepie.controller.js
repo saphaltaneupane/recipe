@@ -4,11 +4,17 @@ import Recipe from "./recepie.schema.js";
 
 const router = express.Router();
 
+/**
+ * @route POST /add/recipe
+ * @desc  Add a recipe (requires login)
+ * @access Private
+ */
 router.post("/add/recipe", auth, async (req, res) => {
   try {
     const { name, description, ingredients, duration, instructions, image } =
       req.body;
 
+    // Validate required fields
     if (
       !name ||
       !description ||
@@ -19,30 +25,32 @@ router.post("/add/recipe", auth, async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "All fields except image are required",
+        message:
+          "All fields except image are required, and ingredients must be an array",
       });
     }
 
+    // Create recipe and attach user ID from auth middleware
     const recipe = await Recipe.create({
       name,
       description,
       ingredients,
       duration,
       instructions,
-      image,
+      image: image || null,
       createdBy: req.user.id,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Recipe created successfully",
       recipe,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    console.error("Error creating recipe:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error: " + error.message });
   }
 });
 
