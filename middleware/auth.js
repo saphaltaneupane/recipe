@@ -38,3 +38,15 @@ const auth = (req, res, next) => {
 };
 
 export default auth;
+
+export const adminAuth = [
+  auth,
+  (req, res, next) => {
+    if (!req.user.isAdmin) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Admin access required" });
+    }
+    next();
+  },
+];
