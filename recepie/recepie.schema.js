@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const recipeSchema = new mongoose.Schema(
   {
@@ -17,7 +17,7 @@ const recipeSchema = new mongoose.Schema(
       required: true,
     },
     duration: {
-      type: String, // you can also use Number if storing minutes
+      type: String, // or Number (minutes)
       required: true,
     },
     instructions: {
@@ -25,12 +25,17 @@ const recipeSchema = new mongoose.Schema(
       required: true,
     },
     image: {
-      type: String, // URL or path to the image
-      required: false,
+      type: String, // image URL
+      default: "",
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   { timestamps: true }
 );
 
 const Recipe = mongoose.model("Recipe", recipeSchema);
+
 export default Recipe;
