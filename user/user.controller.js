@@ -37,49 +37,57 @@ router.post("/register", async (req, res) => {
   return res.status(201).send({ message: "registered successfully" });
 });
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body; // get email & password from request
-
   try {
-    const loginUser = await UserTable.findOne({ email });
+    const { email, password } = req.body;
 
-    if (!loginUser) {
-      return res.status(401).send({ message: "Email not registered." });
+    // ✅ Validate input
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
-    const isMatch = await bcrypt.compare(password, loginUser.password);
+    // ✅ Find user
+    const loginUser = await UserTable.findOne({ email });
+    if (!loginUser) {
+      return res.status(401).json({ message: "Email not registered" });
+    }
 
+    // ✅ Compare password
+    const isMatch = await bcrypt.compare(password, loginUser.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    // ✅ JWT payload
     const payload = {
       id: loginUser._id,
-      name: loginUser.name,
+      username: loginUser.username,
       email: loginUser.email,
     };
-    if (!isMatch) {
-      return res.status(401).send({ message: "Invalid password." });
-    }
+
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY });
 
-    const { password: _, __v, ...userDetails } = loginUser.toObject();
+    // ✅ Remove sensitive info before sending
+    const { password: _, __v, ...userData } = loginUser.toObject();
 
-    // ✅ FIX cookie options
+    // ✅ Set cookie
     res.cookie("accessToken", token, {
-      httpOnly: false,
-      secure: true,
-      sameSite: "none",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // true on HTTPS
+      sameSite: "lax",
       maxAge: COOKIE_EXPIRY_MS,
     });
 
-    return res.status(200).send({
+    return res.status(200).json({
       message: "Login successful",
       token,
-      user: {
-        id: loginUser._id,
-        name: loginUser.name,
-        email: loginUser.email,
-      },
+      user: userData,
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).send({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 });
+
 export { router as Usercontroller };
