@@ -54,4 +54,18 @@ router.post("/add/recipe", auth, async (req, res) => {
   }
 });
 
+router.get("/recipes", async (req, res) => {
+  try {
+    // Fetch all recipes, latest first
+    const recipes = await Recipe.find().sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, recipes });
+  } catch (error) {
+    console.error("Error fetching recipes:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error: " + error.message });
+  }
+});
+
 export { router as RecipeController };
