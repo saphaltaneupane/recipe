@@ -67,5 +67,47 @@ router.get("/recipes", async (req, res) => {
       .json({ success: false, message: "Server error: " + error.message });
   }
 });
+router.put("/edit/recipe/:id", auth, async (req, res) => {
+  try {
+    const updates = req.body || {};
+
+    // Validate ingredients if provided
+    if ("ingredients" in updates && !Array.isArray(updates.ingredients)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Ingredients must be an array" });
+    }
+
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Recipe not found" });
+    }
+
+    if (recipe.createdBy.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Not authorized" });
+    }
+
+    const updatedRecipe = await Recipe.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { returnDocument: "after" } // ✅ Mongoose 7+ fix
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Recipe updated successfully",
+      recipe: updatedRecipe,
+    });
+  } catch (error) {
+    console.error("Error updating recipe:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error: " + error.message });
+  }
+});
 
 export { router as RecipeController };
