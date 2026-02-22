@@ -111,4 +111,39 @@ router.put("/edit/recipe/:id", auth, async (req, res) => {
   }
 });
 
+// ✅ Delete Recipe by ID
+router.delete("/delete/recipe/:id", auth, async (req, res) => {
+  try {
+    const recipe = await Recipe.findById(req.params.id);
+
+    if (!recipe) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Recipe not found" });
+    }
+
+    // Only allow creator to delete
+    if (recipe.createdBy.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Not authorized to delete this recipe",
+        });
+    }
+
+    await Recipe.findByIdAndDelete(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Recipe deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting recipe:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error: " + error.message });
+  }
+});
+
 export { router as RecipeController };
