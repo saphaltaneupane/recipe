@@ -22,7 +22,7 @@ const auth = (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || "default_secret"
+      process.env.JWT_SECRET || "default_secret",
     );
     req.user = decoded; // attach user info to request
     next();
