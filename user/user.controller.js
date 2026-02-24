@@ -14,7 +14,7 @@ const JWT_EXPIRY = process.env.JWT_EXPIRY ?? "30d";
 
 // Cookie expiry matches token expiry
 const COOKIE_EXPIRY_MS = parseInt(
-  process.env.COOKIE_EXPIRY_MS ?? `${30 * 24 * 60 * 60 * 1000}`, // 30 days in ms
+  process.env.COOKIE_EXPIRY_MS ?? `${30 * 24 * 60 * 60 * 1000}` // 30 days in ms
 );
 
 router.post("/register", async (req, res) => {
