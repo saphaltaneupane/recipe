@@ -67,6 +67,22 @@ router.get("/recipes", async (req, res) => {
       .json({ success: false, message: "Server error: " + error.message });
   }
 });
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const recipe = await Recipe.findById(id).populate("createdBy", "name email");
+
+    if (!recipe) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    // send the recipe object directly (frontend matches this)
+    res.status(200).json(recipe);
+  } catch (error) {
+    console.error("Recipe detail error:", error);
+    res.status(500).json({ message: "Failed to fetch recipe details" });
+  }
+});
 router.put("/edit/recipe/:id", auth, async (req, res) => {
   try {
     const updates = req.body || {};
@@ -95,7 +111,7 @@ router.put("/edit/recipe/:id", auth, async (req, res) => {
     const updatedRecipe = await Recipe.findByIdAndUpdate(
       req.params.id,
       updates,
-      { returnDocument: "after" }
+      { returnDocument: "after" },
     );
 
     return res.status(200).json({
@@ -124,12 +140,10 @@ router.delete("/delete/recipe/:id", auth, async (req, res) => {
 
     // Only allow creator to delete
     if (recipe.createdBy.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to delete this recipe",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this recipe",
+      });
     }
 
     await Recipe.findByIdAndDelete(req.params.id);
