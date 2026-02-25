@@ -1,7 +1,9 @@
 import express from "express";
 import auth from "../middleware/auth.js";
 import Recipe from "./recepie.schema.js";
+import { upload } from "../config/upload.js";
 
+import { uploadBufferToCloudinary } from "../config/cloudinary.upload.js";
 const router = express.Router();
 
 /**
@@ -9,50 +11,67 @@ const router = express.Router();
  * @desc  Add a recipe (requires login)
  * @access Private
  */
-router.post("/add/recipe", auth, async (req, res) => {
-  try {
-    const { name, description, ingredients, duration, instructions, image } =
-      req.body;
+router.post(
+  "/add/recipe",
+  upload.fields([{ name: "image", maxCount: 5 }]),
+  auth,
+  async (req, res) => {
+    try {
+      const { name, description, ingredients, duration, instructions } =
+        req.body;
 
-    // Validate required fields
-    if (
-      !name ||
-      !description ||
-      !duration ||
-      !instructions ||
-      !ingredients ||
-      !Array.isArray(ingredients)
-    ) {
-      return res.status(400).json({
+      // Validate required fields
+      if (!name || !description || !duration || !instructions || !ingredients) {
+        return res.status(400).json({
+          success: false,
+          message: "All fields except image are required",
+        });
+      }
+
+      // Ensure ingredients is array
+      const parsedIngredients = Array.isArray(ingredients)
+        ? ingredients
+        : [ingredients];
+
+      // 🔥 Get image files from multer
+      const imageFiles = req.files?.image || [];
+
+      let imageUrls = [];
+
+      if (imageFiles.length > 0) {
+        const uploadedImages = await Promise.all(
+          imageFiles.map((file) =>
+            uploadBufferToCloudinary(file.buffer, "recipes"),
+          ),
+        );
+
+        imageUrls = uploadedImages.map((img) => img.secure_url);
+      }
+
+      const recipe = await Recipe.create({
+        name,
+        description,
+        ingredients: parsedIngredients,
+        duration,
+        instructions,
+        image: imageUrls, // store array of image URLs
+        createdBy: req.user.id,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Recipe created successfully",
+        recipe,
+      });
+    } catch (error) {
+      console.error("Error creating recipe:", error);
+      return res.status(500).json({
         success: false,
-        message:
-          "All fields except image are required, and ingredients must be an array",
+        message: "Server error: " + error.message,
       });
     }
-
-    // Create recipe and attach user ID from auth middleware
-    const recipe = await Recipe.create({
-      name,
-      description,
-      ingredients,
-      duration,
-      instructions,
-      image: image || null,
-      createdBy: req.user.id,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "Recipe created successfully",
-      recipe,
-    });
-  } catch (error) {
-    console.error("Error creating recipe:", error.message);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error: " + error.message });
-  }
-});
+  },
+);
 
 router.get("/recipes", async (req, res) => {
   try {
@@ -70,7 +89,10 @@ router.get("/recipes", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const recipe = await Recipe.findById(id).populate("createdBy", "name email");
+    const recipe = await Recipe.findById(id).populate(
+      "createdBy",
+      "name email",
+    );
 
     if (!recipe) {
       return res.status(404).json({ message: "Recipe not found" });
@@ -157,6 +179,29 @@ router.delete("/delete/recipe/:id", auth, async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Server error: " + error.message });
+  }
+});
+
+router.get("/recipes/my", auth, async (req, res) => {
+  try {
+    const userId = req.user.id; // comes from auth middleware
+
+    // Fetch recipes created by this user
+    const recipes = await Recipe.find({ createdBy: userId }).sort({
+      createdAt: -1,
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: recipes.length,
+      recipes,
+    });
+  } catch (error) {
+    console.error("Error fetching user recipes:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error: " + error.message,
+    });
   }
 });
 

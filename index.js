@@ -5,8 +5,10 @@ import connectDb from "./dbconnection.js";
 import { Usercontroller } from "./user/user.controller.js";
 import { RecipeController } from "./recepie/recepie.controller.js";
 // import { FavController } from "./fav/fav.controller.js";
-
+import dotenv from "dotenv";
 const app = express();
+
+dotenv.config();
 
 app.use(express.json());
 
