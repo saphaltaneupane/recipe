@@ -18,26 +18,37 @@ const COOKIE_EXPIRY_MS = parseInt(
 );
 
 router.post("/register", async (req, res) => {
-  const newUser = req.body;
+  try {
+    const { username, email, mobileNumber, password } = req.body;
 
-  //   find user , throw
-  const user = await UserTable.findOne({ email: newUser.email });
+    if (!username || !email || !mobileNumber || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
 
-  //  if user, throw error
+    // Optional: check if email already exists
+    const existingUser = await UserTable.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: "Email already exists" });
+    }
 
-  if (user) {
-    return res.status(409).send({ message: "user already exists." });
+    // Hash password before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = new UserTable({
+      username,
+      email,
+      mobileNumber,
+      password: hashedPassword,
+    });
+
+    await newUser.save();
+
+    return res.status(201).json({ message: "User registered successfully" });
+  } catch (error) {
+    console.error("Register error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
-
-  const plainPassword = newUser.password;
-  const saltround = 10;
-  const hashedPassword = await bcrypt.hash(plainPassword, saltround);
-  console.log(hashedPassword);
-
-  newUser.password = hashedPassword;
-
-  UserTable.create(newUser);
-  return res.status(201).send({ message: "registered successfully" });
 });
 router.post("/login", async (req, res) => {
   try {
