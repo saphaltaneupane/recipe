@@ -105,49 +105,76 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch recipe details" });
   }
 });
-router.put("/edit/recipe/:id", auth, async (req, res) => {
+router.get("/recipe/:id", auth, async (req, res) => {
   try {
-    const updates = req.body || {};
-
-    // Validate ingredients if provided
-    if ("ingredients" in updates && !Array.isArray(updates.ingredients)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Ingredients must be an array" });
-    }
-
     const recipe = await Recipe.findById(req.params.id);
+
     if (!recipe) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Recipe not found" });
+      return res.status(404).json({ message: "Recipe not found" });
     }
 
-    // Check ownership
+    // ownership check
     if (recipe.createdBy.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Not authorized" });
+      return res.status(403).json({ message: "Not authorized" });
     }
 
-    const updatedRecipe = await Recipe.findByIdAndUpdate(
-      req.params.id,
-      updates,
-      { returnDocument: "after" },
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: "Recipe updated successfully",
-      recipe: updatedRecipe,
-    });
-  } catch (error) {
-    console.error("Error updating recipe:", error.message);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error: " + error.message });
+    res.status(200).json({ data: recipe });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
   }
 });
+
+/* ================================
+   EDIT RECIPE (FORMDATA)
+================================ */
+router.put(
+  "/edit/recipe/:id",
+  auth,
+  upload.array("image"),
+  async (req, res) => {
+    try {
+      const recipe = await Recipe.findById(req.params.id);
+
+      if (!recipe) {
+        return res.status(404).json({ message: "Recipe not found" });
+      }
+
+      if (recipe.createdBy.toString() !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const { name, description, duration, instructions } = req.body;
+
+      // 🔑 FIX INGREDIENTS (FormData issue)
+      let ingredients = req.body.ingredients;
+      if (ingredients && !Array.isArray(ingredients)) {
+        ingredients = [ingredients];
+      }
+
+      // update fields
+      recipe.name = name ?? recipe.name;
+      recipe.description = description ?? recipe.description;
+      recipe.duration = duration ?? recipe.duration;
+      recipe.instructions = instructions ?? recipe.instructions;
+      recipe.ingredients = ingredients ?? recipe.ingredients;
+
+      // images optional
+      if (req.files && req.files.length > 0) {
+        recipe.image = req.files.map((f) => f.originalname);
+      }
+
+      await recipe.save();
+
+      res.status(200).json({
+        message: "Recipe updated successfully",
+        recipe,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    }
+  },
+);
 
 // ✅ Delete Recipe by ID
 router.delete("/delete/recipe/:id", auth, async (req, res) => {
